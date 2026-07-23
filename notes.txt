@@ -1,0 +1,22 @@
+/
+├── AGENTS.md                    # High-level orchestration
+├── agents/
+│   ├── discovery.agent.md
+│   ├── remediation.agent.md
+│   ├── implementation.agent.md
+│   ├── review.agent.md
+│   └── testing.agent.md
+│
+├── docs/
+│   ├── payload-schema.md
+│   ├── remediation-process.md
+│   ├── output-contracts.md
+│   └── coding-standards.md
+│
+├── templates/
+│   ├── discovery-output.json
+│   └── remediation-output.json
+│
+└── .agent-output/
+    ├── discovery.json
+    └── remediation-results.json
