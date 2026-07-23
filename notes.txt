@@ -1,3 +1,7 @@
+Given the pipeline you’re building, I’d keep it simple and modular. Rather than one giant prompt file, create a small set of focused agent instructions and shared documentation.
+
+Here’s the structure I’d recommend:
+
 /
 ├── AGENTS.md                    # High-level orchestration
 ├── agents/
@@ -20,3 +24,241 @@
 └── .agent-output/
     ├── discovery.json
     └── remediation-results.json
+
+1. AGENTS.md
+
+This is the orchestrator. It explains the overall workflow but contains very little implementation detail.
+
+Example:
+
+1. Run Discovery Agent.
+2. Save discovery.json.
+3. If repositoryCount == 0, stop.
+4. Otherwise invoke Remediation Agent.
+5. After remediation completes, invoke Review Agent.
+6. If review passes, invoke Testing Agent.
+7. Return final report.
+
+Think of this as your pipeline controller.
+
+⸻
+
+2. agents/discovery.agent.md
+
+Responsible for only one thing:
+
+* inspect payload
+* identify repos needing work
+* produce discovery.json
+
+Never clones repos.
+
+Never edits code.
+
+Never performs remediation.
+
+⸻
+
+3. agents/remediation.agent.md
+
+Consumes:
+
+discovery.json
+
+For every repository:
+
+* clone/open repo
+* locate overdue actions
+* perform fixes
+* commit results
+* produce remediation-results.json
+
+This agent should know nothing about the original API payload.
+
+⸻
+
+4. agents/implementation.agent.md
+
+This is your code-writing specialist.
+
+When remediation determines:
+
+“Action #3 requires adding a missing GitHub workflow.”
+
+The implementation agent:
+
+* finds affected files
+* writes code
+* updates configs
+* follows project conventions
+
+It shouldn’t decide whether to make the change—that decision belongs to the remediation agent.
+
+⸻
+
+5. agents/review.agent.md
+
+Reads:
+
+* implementation changes
+* git diff
+* tests
+
+Reports:
+
+Blockers
+Major Issues
+Minor Issues
+Suggestions
+
+No code writing unless specifically asked.
+
+⸻
+
+6. agents/testing.agent.md
+
+Runs:
+
+* unit tests
+* integration tests
+* lint
+* typecheck
+* build
+
+Produces something like:
+
+{
+  "testsPassed": true,
+  "lintPassed": true,
+  "typeCheckPassed": true,
+  "buildPassed": true
+}
+
+⸻
+
+Supporting docs
+
+These are shared references that every agent can use.
+
+payload-schema.md
+
+Describe exactly what the payload looks like.
+
+Example:
+
+repos[]
+repoName
+repoUrl
+adviceSummary
+    pastDue
+    warning
+    healthy
+
+Now every agent understands the data without repeating it.
+
+⸻
+
+remediation-process.md
+
+This defines what “remediation” means.
+
+For example:
+
+pastDue > 0
+↓
+Fetch remediation advice
+↓
+Locate affected files
+↓
+Implement fixes
+↓
+Validate
+↓
+Report
+
+⸻
+
+output-contracts.md
+
+Probably the most valuable document.
+
+It defines every JSON artifact agents exchange.
+
+Example:
+
+Discovery Output
+Remediation Output
+Review Output
+Test Output
+
+Because every agent reads the same contracts, they remain loosely coupled.
+
+⸻
+
+coding-standards.md
+
+Your shared implementation rules.
+
+Include things like:
+
+* TypeScript only
+* React functional components
+* TSX
+* no React.FC
+* strict typing
+* existing ESLint rules
+* existing formatting
+* testing expectations
+
+Every coding agent inherits these rules.
+
+⸻
+
+Templates
+
+Instead of telling agents to invent JSON, give them examples.
+
+templates/
+discovery-output.json
+{
+  "repositoriesRequiringRemediation": [],
+  "repositoryCount": 0,
+  "totalPastDueActions": 0
+}
+
+and
+
+remediation-output.json
+
+with the expected schema.
+
+⸻
+
+My one addition
+
+From what you’ve described previously, your workflow actually has three distinct phases, not two:
+
+API Payload
+      │
+      ▼
+Discovery Agent
+      │
+      ▼
+Discovery Manifest
+      │
+      ▼
+Advice Retrieval Agent
+      │
+      ▼
+Remediation Manifest
+      │
+      ▼
+Implementation Agent
+      │
+      ▼
+Review Agent
+      │
+      ▼
+Testing Agent
+
+The Advice Retrieval Agent is important because your original payload only tells you how many actions are overdue (pastDue), not what those actions are. It should take the discovery manifest, fetch the detailed remediation advice for each repository, and produce a normalized remediation manifest that the implementation agent can execute. That keeps each agent focused on a single responsibility and makes the pipeline easier to debug and extend as new advice types are introduced.
